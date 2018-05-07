@@ -138,104 +138,113 @@ define([
 
     createViewPanelsHtml: function(view, webMapOrWebScene) {
     //  this._isWebMap.addLayer(layer);
+      
+    //init the layer, more options are available and explained in the cluster layer constructor
+    //set up a class breaks renderer to render different symbols based on the cluster count. Use the required clusterCount property to break on.
+      var url = "https://services1.arcgis.com/nCKYwcSONQTkPA4K/ArcGIS/rest/services/Gasolineras/FeatureServer/0/query?where=1%3D1&objectIds=&time=&geometry=&geometryType=esriGeometryEnvelope&inSR=&spatialRel=esriSpatialRelIntersects&resultType=none&distance=0.0&units=esriSRUnit_Meter&returnGeodetic=false&outFields=*&returnGeometry=true&multipatchOption=xyFootprint&maxAllowableOffset=&geometryPrecision=&outSR=4326&datumTransformation=&applyVCSProjection=false&returnIdsOnly=false&returnCountOnly=false&returnExtentOnly=false&returnDistinctValues=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&having=&resultOffset=&resultRecordCount=&returnZ=false&returnM=false&returnExceededLimitFeatures=true&quantizationParameters=&sqlFormat=none&f=pjson";
+      esriRequest(url, {
+        responseType: "json"
+      }).then(function(response){
+        // The requested data
+        var data = response.data.features;
+        // Tratamos datos para que tengan la estructura que necesitamos
+        var newData = data.map(function(dat) {
+        return {
+          "OBJECTID": dat.attributes.OBJECTID,
+          "Provincia": dat.attributes.Provincia,
+          "Municipio": dat.attributes.Municipio,
+          "Localidad": dat.attributes.Localidad,
+          "CodigoPostal": dat.attributes.CodigoPostal,
+          "Direccion": dat.attributes.Direccion,
+          "Margen": dat.attributes.Margen,
+          "Rotulo": dat.attributes.Rotulo,
+          "Horario": dat.attributes.Horario,
+          "x": dat.geometry.x,
+          "y": dat.geometry.y
+        }
+        });
 
-    // function initLayer() {
-      debugger
-                   //init the layer, more options are available and explained in the cluster layer constructor
-                   //set up a class breaks renderer to render different symbols based on the cluster count. Use the required clusterCount property to break on.
-                   var url = "https://services1.arcgis.com/nCKYwcSONQTkPA4K/ArcGIS/rest/services/Gasolineras/FeatureServer/0/query?where=1%3D1&objectIds=&time=&geometry=&geometryType=esriGeometryEnvelope&inSR=&spatialRel=esriSpatialRelIntersects&resultType=none&distance=0.0&units=esriSRUnit_Meter&returnGeodetic=false&outFields=*&returnGeometry=true&multipatchOption=xyFootprint&maxAllowableOffset=&geometryPrecision=&outSR=&datumTransformation=&applyVCSProjection=false&returnIdsOnly=false&returnCountOnly=false&returnExtentOnly=false&returnDistinctValues=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&having=&resultOffset=&resultRecordCount=&returnZ=false&returnM=false&returnExceededLimitFeatures=true&quantizationParameters=&sqlFormat=none&f=pjson";
-                   esriRequest(url, {
-                     responseType: "json"
-                   }).then(function(response){
-                     // The requested data
-                     var data = response.data.features;
+      var defaultSym = new SimpleMarkerSymbol({
+          size: 6,
+          color: "#FF0000",
+          outline: null
+      });
+      var renderer = new ClassBreaksRenderer({
+          defaultSymbol: defaultSym
+      });
+      renderer.field = "clusterCount";
+      var smSymbol = new SimpleMarkerSymbol({ size: 22, outline: new SimpleLineSymbol({ color: [221, 159, 34, 0.8] }), color: [255, 204, 102, 0.8] });
+      var mdSymbol = new SimpleMarkerSymbol({ size: 24, outline: new SimpleLineSymbol({ color: [82, 163, 204, 0.8] }), color: [102, 204, 255, 0.8] });
+      var lgSymbol = new SimpleMarkerSymbol({ size: 28, outline: new SimpleLineSymbol({ color: [41, 163, 41, 0.8] }), color: [51, 204, 51, 0.8] });
+      var xlSymbol = new SimpleMarkerSymbol({ size: 32, outline: new SimpleLineSymbol({ color: [200, 52, 59, 0.8] }), color: [250, 65, 74, 0.8] });
+      renderer.addClassBreakInfo(0, 19, smSymbol);
+      renderer.addClassBreakInfo(20, 150, mdSymbol);
+      renderer.addClassBreakInfo(151, 1000, lgSymbol);
+      renderer.addClassBreakInfo(1001, Infinity, xlSymbol);
+      var areaRenderer;
+      // if area display mode is set. Create a renderer to display cluster areas. Use SimpleFillSymbols as the areas are polygons
+      var defaultAreaSym = new SimpleFillSymbol({
+          style: "solid",
+          color: [0, 0, 0, 0.2],
+          outline: new SimpleLineSymbol({ color: [0, 0, 0, 0.3] })
+      });
+      areaRenderer = new ClassBreaksRenderer({
+          defaultSymbol: defaultAreaSym
+      });
+      areaRenderer.field = "clusterCount";
+      var smAreaSymbol = new SimpleFillSymbol({ color: [255, 204, 102, 0.4], outline: new SimpleLineSymbol({ color: [221, 159, 34, 0.8], style: "dash" }) });
+      var mdAreaSymbol = new SimpleFillSymbol({ color: [102, 204, 255, 0.4], outline: new SimpleLineSymbol({ color: [82, 163, 204, 0.8], style: "dash" }) });
+      var lgAreaSymbol = new SimpleFillSymbol({ color: [51, 204, 51, 0.4], outline: new SimpleLineSymbol({ color: [41, 163, 41, 0.8], style: "dash" }) });
+      var xlAreaSymbol = new SimpleFillSymbol({ color: [250, 65, 74, 0.4], outline: new SimpleLineSymbol({ color: [200, 52, 59, 0.8], style: "dash" }) });
+      areaRenderer.addClassBreakInfo(0, 19, smAreaSymbol);
+      areaRenderer.addClassBreakInfo(20, 150, mdAreaSymbol);
+      areaRenderer.addClassBreakInfo(151, 1000, lgAreaSymbol);
+      areaRenderer.addClassBreakInfo(1001, Infinity, xlAreaSymbol);
+      // Set up another class breaks renderer to style the flares individually
+      var flareRenderer = new ClassBreaksRenderer({
+          defaultSymbol: renderer.defaultSymbol
+      });
+      flareRenderer.field = "clusterCount";
+      var smFlareSymbol = new SimpleMarkerSymbol({ size: 14, color: [255, 204, 102, 0.8], outline: new SimpleLineSymbol({ color: [221, 159, 34, 0.8] }) });
+      var mdFlareSymbol = new SimpleMarkerSymbol({ size: 14, color: [102, 204, 255, 0.8], outline: new SimpleLineSymbol({ color: [82, 163, 204, 0.8] }) });
+      var lgFlareSymbol = new SimpleMarkerSymbol({ size: 14, color: [51, 204, 51, 0.8], outline: new SimpleLineSymbol({ color: [41, 163, 41, 0.8] }) });
+      var xlFlareSymbol = new SimpleMarkerSymbol({ size: 14, color: [250, 65, 74, 0.8], outline: new SimpleLineSymbol({ color: [200, 52, 59, 0.8] }) });
+      flareRenderer.addClassBreakInfo(0, 19, smFlareSymbol);
+      flareRenderer.addClassBreakInfo(20, 150, mdFlareSymbol);
+      flareRenderer.addClassBreakInfo(151, 1000, lgFlareSymbol);
+      flareRenderer.addClassBreakInfo(1001, Infinity, xlFlareSymbol);
+      // set up a popup template
+     var popupTemplate = new PopupTemplate({
+         title: "{Localidad}",
+         content: [{
+             type: "fields",
+             fieldInfos: [
+                 { fieldName: "Localidad", label: "Facility Type", visible: true },
+                 { fieldName: "Localidad", label: "Post Code", visible: true },
+                 { fieldName: "Localidad", label: "Opening Hours", visible: true }
+             ]
+         }]
+     });
+      var options = {
+          id: "flare-cluster-layer",
+          clusterRenderer: renderer,
+          areaRenderer: areaRenderer,
+          flareRenderer: flareRenderer,
+         singlePopupTemplate: popupTemplate,
+          spatialReference: new SpatialReference({ "wkid": 4326 }),
+          subTypeFlareProperty: "facilityType",
+          singleFlareTooltipProperty: "name",
+          displaySubTypeFlares: true,
+          maxSingleFlareCount: 8,
+          clusterRatio: 75,
+          clusterAreaDisplay: "activated",
+          data: newData
+      };
+      // Accedemos a FlareClusterLayer que es una función de FlareClusterLayer_v4
+      clusterLayer = new FlareClusterLayer_v4.FlareClusterLayer(options);
+      view.map.add(clusterLayer);
 
-                   var defaultSym = new SimpleMarkerSymbol({
-                       size: 6,
-                       color: "#FF0000",
-                       outline: null
-                   });
-                   var renderer = new ClassBreaksRenderer({
-                       defaultSymbol: defaultSym
-                   });
-                   renderer.field = "clusterCount";
-                   var smSymbol = new SimpleMarkerSymbol({ size: 22, outline: new SimpleLineSymbol({ color: [221, 159, 34, 0.8] }), color: [255, 204, 102, 0.8] });
-                   var mdSymbol = new SimpleMarkerSymbol({ size: 24, outline: new SimpleLineSymbol({ color: [82, 163, 204, 0.8] }), color: [102, 204, 255, 0.8] });
-                   var lgSymbol = new SimpleMarkerSymbol({ size: 28, outline: new SimpleLineSymbol({ color: [41, 163, 41, 0.8] }), color: [51, 204, 51, 0.8] });
-                   var xlSymbol = new SimpleMarkerSymbol({ size: 32, outline: new SimpleLineSymbol({ color: [200, 52, 59, 0.8] }), color: [250, 65, 74, 0.8] });
-                   renderer.addClassBreakInfo(0, 19, smSymbol);
-                   renderer.addClassBreakInfo(20, 150, mdSymbol);
-                   renderer.addClassBreakInfo(151, 1000, lgSymbol);
-                   renderer.addClassBreakInfo(1001, Infinity, xlSymbol);
-                   var areaRenderer;
-                   // if area display mode is set. Create a renderer to display cluster areas. Use SimpleFillSymbols as the areas are polygons
-                   var defaultAreaSym = new SimpleFillSymbol({
-                       style: "solid",
-                       color: [0, 0, 0, 0.2],
-                       outline: new SimpleLineSymbol({ color: [0, 0, 0, 0.3] })
-                   });
-                   areaRenderer = new ClassBreaksRenderer({
-                       defaultSymbol: defaultAreaSym
-                   });
-                   areaRenderer.field = "clusterCount";
-                   var smAreaSymbol = new SimpleFillSymbol({ color: [255, 204, 102, 0.4], outline: new SimpleLineSymbol({ color: [221, 159, 34, 0.8], style: "dash" }) });
-                   var mdAreaSymbol = new SimpleFillSymbol({ color: [102, 204, 255, 0.4], outline: new SimpleLineSymbol({ color: [82, 163, 204, 0.8], style: "dash" }) });
-                   var lgAreaSymbol = new SimpleFillSymbol({ color: [51, 204, 51, 0.4], outline: new SimpleLineSymbol({ color: [41, 163, 41, 0.8], style: "dash" }) });
-                   var xlAreaSymbol = new SimpleFillSymbol({ color: [250, 65, 74, 0.4], outline: new SimpleLineSymbol({ color: [200, 52, 59, 0.8], style: "dash" }) });
-                   areaRenderer.addClassBreakInfo(0, 19, smAreaSymbol);
-                   areaRenderer.addClassBreakInfo(20, 150, mdAreaSymbol);
-                   areaRenderer.addClassBreakInfo(151, 1000, lgAreaSymbol);
-                   areaRenderer.addClassBreakInfo(1001, Infinity, xlAreaSymbol);
-                   // Set up another class breaks renderer to style the flares individually
-                   var flareRenderer = new ClassBreaksRenderer({
-                       defaultSymbol: renderer.defaultSymbol
-                   });
-                   flareRenderer.field = "clusterCount";
-                   var smFlareSymbol = new SimpleMarkerSymbol({ size: 14, color: [255, 204, 102, 0.8], outline: new SimpleLineSymbol({ color: [221, 159, 34, 0.8] }) });
-                   var mdFlareSymbol = new SimpleMarkerSymbol({ size: 14, color: [102, 204, 255, 0.8], outline: new SimpleLineSymbol({ color: [82, 163, 204, 0.8] }) });
-                   var lgFlareSymbol = new SimpleMarkerSymbol({ size: 14, color: [51, 204, 51, 0.8], outline: new SimpleLineSymbol({ color: [41, 163, 41, 0.8] }) });
-                   var xlFlareSymbol = new SimpleMarkerSymbol({ size: 14, color: [250, 65, 74, 0.8], outline: new SimpleLineSymbol({ color: [200, 52, 59, 0.8] }) });
-                   flareRenderer.addClassBreakInfo(0, 19, smFlareSymbol);
-                   flareRenderer.addClassBreakInfo(20, 150, mdFlareSymbol);
-                   flareRenderer.addClassBreakInfo(151, 1000, lgFlareSymbol);
-                   flareRenderer.addClassBreakInfo(1001, Infinity, xlFlareSymbol);
-                   // set up a popup template
-                   var popupTemplate = new PopupTemplate({
-                       title: "{name}",
-                       content: [{
-                           type: "fields",
-                           fieldInfos: [
-                               { fieldName: "facilityType", label: "Facility Type", visible: true },
-                               { fieldName: "postcode", label: "Post Code", visible: true },
-                               { fieldName: "isOpen", label: "Opening Hours", visible: true }
-                           ]
-                       }]
-                   });
-                   var options = {
-                       id: "flare-cluster-layer",
-                       clusterRenderer: renderer,
-                       areaRenderer: areaRenderer,
-                       flareRenderer: flareRenderer,
-                       singlePopupTemplate: popupTemplate,
-                       spatialReference: new SpatialReference({ "wkid": 4326 }),
-                       subTypeFlareProperty: "facilityType",
-                       singleFlareTooltipProperty: "name",
-                       displaySubTypeFlares: true,
-                       maxSingleFlareCount: maxSingleFlareCount,
-                       clusterRatio: 75,
-                       clusterAreaDisplay: areaDisplayMode,
-                       data: data
-                   }
-                   clusterLayer = new FlareClusterLayer_v4(options);
-                   view.map.add(clusterLayer);
-                   // clusterLayer.on("draw-complete", function () {
-                   //     //console.log('draw complete event callback');
-                   // });
-
-                 });
-               // };
-            // initLayer();
-
+    });
 
       // clusterLayer = new ClusterFeatureLayer({
       //         'url': 'https://services1.arcgis.com/nCKYwcSONQTkPA4K/arcgis/rest/services/Gasolineras/FeatureServer',
